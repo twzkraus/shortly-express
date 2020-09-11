@@ -17,17 +17,17 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 
 
-app.get('/', 
+app.get('/',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -38,7 +38,7 @@ app.get('/links',
     });
 });
 
-app.post('/links', 
+app.post('/links',
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
@@ -78,7 +78,46 @@ app.post('/links',
 // Write your authentication routes here
 /************************************************************/
 
+app.post('/login',
+(req, res, next) => {
+  models.Users.get({username: req.body.username})
+    .then( (userEntry) => {
+      if (userEntry) {
+        return models.Users.compare(req.body.password, userEntry.password, userEntry.salt);
+      } else {
+        res.redirect(401, '/login');
+        throw Error('This user does not exist');
+      }
+    })
+    .then((passwordIsCorrect) => {
+      if (!passwordIsCorrect) {
+        res.redirect(401, '/login');
+        throw Error('This user and password don\'t match');
+      } else {
+        res.redirect(201, '/');
+      }
+    })
+    .catch(err => {});
+});
 
+app.post('/signup',
+(req, res, next) => {
+  // req.body has username and password properties
+  // use get to check if username exists
+  models.Users.get({username: req.body.username})
+  // if yes: redirect to signup
+    .then( (result) => {
+      if (result) {
+        res.redirect('/signup');
+      } else {
+        models.Users.create({
+          username: req.body.username,
+          password: req.body.password
+        });
+        res.redirect(201, '/');
+      }
+    });
+});
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail

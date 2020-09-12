@@ -14,6 +14,7 @@ module.exports.createSession = (req, res, next) => {
         // sessionData includes user id, hash, primary id
         req.session = sessionData;
         next(req, res);
+        return;
       }
     })
     .catch( () => {
@@ -23,6 +24,7 @@ module.exports.createSession = (req, res, next) => {
         })
         .then(data => {
           req.session = {hash: data.hash};
+          res.cookies = res.cookies || {};
           res.cookies['shortlyid'] = {value: data.hash};
           next(req, res);
         })

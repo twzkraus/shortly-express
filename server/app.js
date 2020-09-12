@@ -20,14 +20,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 app.get('/',
 (req, res) => {
-  debugger;
-  cookieParser(req, res, (req2, res2) => {
-    Auth.createSession(req2, res2, (req3, res3) => {
-      console.log('cookies', res3.cookies);
-      // res3.status(200).send('index');
-      res3.render('index');
-    })
-  })
+  assignSession(req, res, (r) => {
+    r.render('index');
+  });
 });
 
 app.get('/create',
@@ -102,7 +97,10 @@ app.post('/login',
         res.redirect(401, '/login');
         throw Error('This user and password don\'t match');
       } else {
-        res.redirect(201, '/');
+        // create a session for the user
+        assignSession(req, res, (r) => {
+          r.redirect(201, '/');
+        });
       }
     })
     .catch(err => {});
@@ -122,10 +120,43 @@ app.post('/signup',
           username: req.body.username,
           password: req.body.password
         });
-        res.redirect(201, '/');
+        assignSession(req, res, (r) => {
+          debugger;
+          let userHash = r.cookies['shortlyid'].value;
+          models.Users.get({username: req.body.username})
+          .then( (result) => {
+            models.Sessions.update({hash: userHash},
+              {hash: userHash, userId: result.id})
+          })
+          r.redirect(201, '/');
+          // need to use hash from assignSession and user id from ? to update sessions table--lookup session with hash value, add userId
+        });
       }
     });
 });
+
+app.get('/logout', (req, res, next) => {
+  cookieParser(req, res, (req1, res1) => {
+    // delete session
+    return models.Sessions.delete({ hash: req1.cookies.shortlyid })
+    .then( () => {
+      // destroy cookie
+      res1.clearCookie('shortlyid');
+      next();
+      });
+
+  })
+})
+
+var assignSession = function (req, res, cb) {
+  cookieParser(req, res, (req2, res2) => {
+    Auth.createSession(req2, res2, (req3, res3) => {
+      res.cookie('shortlyid', res3.cookies['shortlyid'].value);
+      // console.log('cookies', res3.cookies);
+      cb(res3);
+    });
+  });
+};
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail

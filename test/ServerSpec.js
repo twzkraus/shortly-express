@@ -531,13 +531,15 @@ describe('', function() {
         if (err) { return done(err); }
         var cookies = cookieJar.getCookies('http://127.0.0.1:4568/');
         var cookieValue = cookies[0].value;
+        console.log('cookie value', cookieValue);
 
         var queryString = `
-          SELECT users.username FROM users, sessions
-          WHERE sessions.hash = ? AND users.id = sessions.userId
+        SELECT users.username FROM users, sessions
+        WHERE sessions.hash = ? AND users.id = sessions.userId
         `;
 
         db.query(queryString, cookieValue, function(error, users) {
+          console.log('users', users);
           if (error) { return done(error); }
           var user = users[0];
           expect(user.username).to.equal('Vivian');

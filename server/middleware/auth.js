@@ -2,25 +2,45 @@ const models = require('../models');
 const Promise = require('bluebird');
 
 module.exports.createSession = (req, res, next) => {
-  console.log('inside of createSession');
+  if (req.cookies) {
   models.Sessions.get({hash: req.cookies.shortlyid})
     // valid id: get will return an object
     .then((sessionData) => {
       // not valid: get will return undefined
       if (!sessionData) {
-        console.log('no session data was found');
-        let sessionHash = models.Sessions.create().then( data => { return data.hash; } );
-        req.session = { shortlyid: sessionHash };
+        // this previously contained the .catch block information, but throwing an error should route that there anyway
+        throw Error();
       } else {
-        console.log('session data was found');
         // sessionData includes user id, hash, primary id
-        // use user id to log that person in
+        req.session = sessionData;
+        next(req, res);
       }
+    })
+    .catch( () => {
+      return models.Sessions.create()
+        .then(session => {
+          return models.Sessions.get({id: session.insertId})
+        })
+        .then(data => {
+          req.session = {hash: data.hash};
+          res.cookies['shortlyid'] = {value: data.hash};
+          next(req, res);
+        })
     });
-  next();
+  } else {
+    models.Sessions.create()
+      .then(session => {
+        return models.Sessions.get({id: session.insertId})
+      })
+      .then(data => {
+        req.session = {hash: data.hash};
+        res.cookies = {};
+        res.cookies['shortlyid'] = {value: data.hash};
+        next(req, res);
+      })
+  }
 };
 
 /************************************************************/
 // Add additional authentication middleware functions below
 /************************************************************/
-

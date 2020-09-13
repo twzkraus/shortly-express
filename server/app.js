@@ -20,24 +20,34 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 app.get('/',
 (req, res) => {
-  assignSession(req, res, (r) => {
-    r.render('index');
+    assignSession(req, res, (r) => {
+      Auth.verifySession(req, res, () => {
+        r.render('index');
+    });
   });
 });
 
 app.get('/create',
 (req, res) => {
-  res.render('index');
+  assignSession(req, res, (r) => {
+    Auth.verifySession(req, res, () => {
+      r.render('index');
+    });
+  });
 });
 
 app.get('/links',
 (req, res, next) => {
-  models.Links.getAll()
-    .then(links => {
-      res.status(200).send(links);
-    })
-    .error(error => {
-      res.status(500).send(error);
+  assignSession(req, res, (r) => {
+    Auth.verifySession(req, res, () => {
+      models.Links.getAll()
+        .then(links => {
+          res.status(200).send(links);
+        })
+        .error(error => {
+          res.status(500).send(error);
+        });
+      });
     });
 });
 
@@ -80,6 +90,14 @@ app.post('/links',
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.get('/signup', (req, res) => {
+  res.render('signup');
+});
 
 app.post('/login',
 (req, res, next) => {
@@ -128,7 +146,7 @@ app.post('/signup',
             models.Sessions.update({hash: userHash},
               {hash: userHash, userId: result.id})
           })
-          r.redirect(201, '/');
+          r.render('index');
           // need to use hash from assignSession and user id from ? to update sessions table--lookup session with hash value, add userId
         });
       }
@@ -144,8 +162,7 @@ app.get('/logout', (req, res, next) => {
       res1.clearCookie('shortlyid');
       next();
       });
-
-  })
+  });
 })
 
 var assignSession = function (req, res, cb) {
